@@ -1,76 +1,84 @@
-from robot import robot
-from environment import environment
+# from robot import robot
+# from environment_driver import environment
+# from PRM import PRM
+import time
 from cs1lib import *
 
 WINDOW_WIDTH = 200
 WINDOW_HEIGHT = 200
+iteration = 0
 
-class graphics:
+class Graphics:
 
-    def __init__(self, env):
+    def __init__(self, env, configs):
         self.env = env
-        self.r = env.r
+        self.robot = env.test_robot
 
-        # robot
-        self.center_x = 200
-        self.center_y = 200
+        self.configs = configs
+        print('PRINTING CONFIGS')
+        for config in self.configs:
+            print(config)
+
+    def update_robot(self, config):
+        self.robot.update_configuration(config)
 
     def draw_configuration(self):
 
-        if self.env.detect_collision():
+        if self.env.detect_collision(self.robot):
             set_fill_color(1, 0, 0, .5)
             draw_rectangle(0, 0, 400, 400)
 
         set_fill_color(1, 1, 1)
 
         set_stroke_color(0, 1, 0)
-        x1 = self.r.getX1()
-        y1 = self.r.getY1()
 
-        x2 = self.r.getX2()
-        y2 = self.r.getY2()
+        start_x = WINDOW_WIDTH
+        start_y = WINDOW_HEIGHT
 
-        draw_line(self.center_x,
-                  self.center_y,
-                  self.center_x + x1,
-                  self.center_y - y1)
+        for i in range(len(self.robot.x_values)):
 
-        draw_line(self.center_x + x1,
-                  self.center_y - y1,
-                  self.center_x + x2,
-                  self.center_y - y2)
+            end_x = WINDOW_WIDTH + self.robot.x_values[i]
+            end_y = WINDOW_HEIGHT - self.robot.y_values[i]
+
+            draw_line(start_x, start_y, end_x, end_y)
+
+            start_x = end_x
+            start_y = end_y
 
         set_stroke_color(0, 0, 0)
 
         for obstacle in self.env.obstacles:
 
-            draw_circle(self.center_x + obstacle.x,
-                        self.center_y + obstacle.y,
+            draw_circle(WINDOW_WIDTH + obstacle.x,
+                        WINDOW_HEIGHT + obstacle.y,
                         self.env.buffer_radius)
 
-        # draw_circle(self.center_x + 50,
-        #             self.center_y - 50,
-        #             3)
-        #
-        # draw_circle(self.center_x + 50,
-        #             self.center_y + 50,
-        #             3)
-        #
-        # draw_circle(self.center_x - 50,
-        #             self.center_y + 50,
-        #             3)
-        #
-        # draw_circle(self.center_x - 50,
-        #             self.center_y - 50,
-        #             3)
+    def animate(self):
 
-    def main(self):
+        global iteration
+
         clear()
+        config = self.configs[len(self.configs) - 1]
+        if(iteration < len(self.configs)):
+            config = list(self.configs[iteration])
+            print('rendering: {}'.format(config))
+        self.update_robot(config)
         self.draw_configuration()
+        iteration += 1
 
-if __name__ == "__main__":
-    # robot_test = robot(0, 90, 100, 100)
-    robot_test = robot(270, 270, 100, 100)
-    environment_test = environment(robot_test, 5)
-    render = graphics(environment_test)
-    start_graphics(render.main)
+
+    def render(self):
+        start_graphics(self.animate)
+
+    # def render(self):
+    #     start_graphics(self.main())
+
+# if __name__ == "__main__":
+#     angles = [0, 90]
+#     # angles = [315, 270]
+#     angles = [270, 270]
+#     robot_test = robot(angles, 100)
+#     environment_test = environment(robot_test, 5)
+#     graphics(environment_test).render()
+#     render_graphics = graphics(environment_test)
+#     start_graphics(render_graphics.main)
