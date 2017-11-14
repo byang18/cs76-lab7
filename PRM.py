@@ -1,4 +1,5 @@
 import random
+import math
 from collections import deque
 from operator import itemgetter
 # from SearchNode import SearchNode
@@ -24,7 +25,7 @@ class PRM:
 
     def __init__(self, e):
         self.env = e
-        self.starting_config = self.env.robot.start_angles
+        self.starting_config = self.env.robot.thetas
         self.path = []
         self.graph = {}
 
@@ -37,12 +38,12 @@ class PRM:
         # print(tuple(self.env.robot.goal_state))
 
         if node is None:
-            node = SearchNode(tuple(self.env.robot.start_angles))
+            node = SearchNode(tuple(self.starting_config))
             queue.appendleft(node)
             while len(queue) > 0:
                 current = queue.pop()
                 current_state = tuple(current.get_state())
-                print(tuple(current_state))
+                # print(tuple(current_state))
                 # print("current: " + str(current.state))
                 visited[tuple(current_state)] = current
                 if tuple(current_state) == tuple(self.env.robot.goal_state):
@@ -75,7 +76,7 @@ class PRM:
         self.graph[tuple(self.starting_config)] = []
         self.graph[tuple(self.env.robot.goal_state)] = []
 
-        for i in range(0, 70):
+        for i in range(0, 100):
             config = tuple(self.env.generate_valid_configuration())
             if config not in self.graph:
                 self.graph[config] = []
@@ -93,7 +94,7 @@ class PRM:
                     continue
 
                 # if it's good then add to the list
-                is_collision, diff = self.env.check_motion(config, end_config, 20)
+                is_collision, diff = self.env.check_motion(config, end_config, 10)
 
                 if is_collision:
                     continue
@@ -101,25 +102,25 @@ class PRM:
                 m += 1
                 if (m % 50 == 0):
                     print(m)
-                    # no_collisions.append(tuple((goal_config, diff)))
-                no_collisions.append(end_config)
 
-            # no_collisions.sort(key=itemgetter(1), reverse=True)
+                no_collisions.append(tuple((end_config, diff)))
+                # no_collisions.append(end_config)
 
-            # to_add = []
-            # for i in range(min(k, len(no_collisions))):
-            #     to_add.append(no_collisions[i][0])
+            no_collisions.sort(key=itemgetter(1), reverse=True)
+
+            to_add = []
+            for i in range(min(k, len(no_collisions))):
+                to_add.append(no_collisions[i][0])
             # print(no_collisions)
-            if(config == (0, 90)):
-                print(no_collisions)
-            self.graph[config] = no_collisions
+            self.graph[config] = to_add
 
 if __name__ == "__main__":
-    starting_angles = [0, 90]
-    goal_angles = [270, 270]
+    end_angles = [math.radians(10), math.radians(355), math.radians(90), math.radians(355)]
+    # starting_angles = [math.radians(270), math.radians(10), math.radians(270), math.radians(10)]
+    starting_angles = [3.774016428646744, 1.0914423299586218, 5.4175286331656896, 0.22380400583459362]
     # angles = [315, 270]
     # angles = [270, 270]
-    robot_test = Robot(starting_angles, goal_angles, 100)
+    robot_test = Robot(starting_angles, end_angles, 50)
     environment_test = Environment(robot_test, 5)
     prm = PRM(environment_test)
     prm.generate_vertices()

@@ -1,4 +1,5 @@
 import time
+import math
 from shapely.geometry import Point, LineString, Polygon
 from robot import Robot
 from graphics import Graphics
@@ -11,11 +12,11 @@ class Environment:
 
     def __init__(self, robot, buffer_radius=5):
         self.robot = robot
-        self.test_robot = Robot([0, 0])
         self.buffer_radius = buffer_radius
 
         self.configs = []
 
+        # self.obstacles = []
         self.obstacles = [Point(50, 50),
                           Point(-50, -50),
                           Point(50, -50),
@@ -46,38 +47,42 @@ class Environment:
 
         increment_by = []
         sum_distances = 0
-        flip = 1
 
         for i in range(len(start_config)):
 
-            difference = float(goal_config[i]) - float(start_config[i])
+            difference, forward = get_min_travel(goal_config[i], start_config[i])
 
-            if abs(difference) > 180:
-                flip = -1
+            if forward:
+                step = difference/timestep
+                # print(step)
+            else:
+                step = -difference/timestep
 
-            increment_by.append((flip * float(difference))/timestep)
-            flip = 1
+            increment_by.append(step)
             sum_distances += abs(difference)
+
+        # print(len(start_config))
+        # print(increment_by)
 
         # incremented_config = []
         prev_config = list(start_config)
         # self.configs.append(tuple(prev_config))
         # print("first: {}".format(self.configs))
-
         for t in range(timestep):
             # print(prev_config)
 
             # incremented_config.append(tuple(prev_config))
 
-            self.test_robot.update_configuration(prev_config)
-            if self.detect_collision(self.test_robot):
-                if(tuple(start_config) == (0, 90)):
+            self.robot.update_configuration(prev_config)
+            self.configs.append(tuple(prev_config))
+            if self.detect_collision(self.robot):
+                if(tuple(start_config) == (0, math.radians(90))):
                     print("COLLISION")
                     print("     start config: {}".format(start_config))
                     print("     prev config: {}".format(prev_config))
                     print("     goal config: {}".format(goal_config))
-                # for config in self.configs:
-                #     print(config)
+                    # for config in self.configs:
+                    #     print(config)
                 return (True, -1)
 
             self.configs.append(tuple(prev_config))
@@ -88,7 +93,19 @@ class Environment:
 
             # i represents the angle
             for i in range(len(start_config)):
-                prev_config[i] += float(increment_by[i])
+                dummy = prev_config[i]
+                dummy += float(increment_by[i])
+
+                if(forward and dummy > 6.27):
+
+                    # dummy should be reset to 0
+                    prev_config[i] = (dummy - 6.27)
+                elif((not forward) and dummy < 0):
+
+                    # dummy should be set to 6.27
+                    prev_config[i] = (dummy + 6.27)
+                else:
+                    prev_config[i] += float(increment_by[i])
 
 
         return (False, sum_distances)
@@ -109,16 +126,45 @@ class Environment:
 
             # check if the difference is forward or backward for timestep
 
+def angular_distance(end, start):
+    # print("end is {}".format(end))
+    # print("start is {}".format(start))
+    # print("return is {}".format(float(end) - float(start)))
+    # print("------")
+    return float(end) - float(start)
+
+def get_min_travel(end, start):
+
+    # true is forwards
+    # false is backwards
+
+    d = angular_distance(end, start)
+    test = min(d, (2 * math.pi) - d)
+
+    if d == test:
+        return(test, True)
+    else:
+        return(test, False)
+
 if __name__ == "__main__":
     # angles = [0, 90]
     # angles = [270, 270]
     # robot_test = robot(angles, 100)
     # environment_test = environment(robot_test, 3)
 
-    angles = [0, 90]
-    robot_test = Robot(angles, 100)
+    # starting_angles = [0, math.radians(90)]
+    # end_angles = [math.radians(270), math.radians(270)]
+
+    starting_angles = [0.17453292519943295, 6.19591884457987, 1.5707963267948966, 6.19591884457987]
+    end_angles = [3.774016428646744, 1.0914423299586218, 5.4175286331656896, 0.22380400583459362]
+    # starting_angles = [math.radians(270), math.radians(10), math.radians(270), math.radians(10)]
+    # end_angles = [1.327213366381409, 0.9768762655660873]
+    # starting_angles = [5.847508897435841, 0.6093042316591071]
+
+
+    robot_test = Robot(starting_angles, end_angles, 50)
     environment_test = Environment(robot_test, 5)
-    environment_test.check_motion([12, 295], [270, 270], 100)
+    environment_test.check_motion(starting_angles, end_angles, 100)
     # environment_test.generate_valid_configuration()
-    graphics = Graphics(environment_test, environment_test.configs)
-    graphics.render()
+    # graphics = Graphics(environment_test)
+    # graphics.render()

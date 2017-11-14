@@ -2,7 +2,7 @@ import math
 import random
 from shapely.geometry import Point, LineString, Polygon
 
-MAX_ANGLE = 360
+MAX_ANGLE = 2 * math.pi
 
 class Robot:
 
@@ -17,19 +17,19 @@ class Robot:
         self.goal_state = goal_state
         # self.start_angles = start_angles
         self.length = length
-        self.thetas = []
+        self.thetas = start_thetas
         self.x_values = []
         self.y_values = []
         self.links = []
 
-        self.update_configuration(start_angles)
+        self.update_configuration(start_thetas)
 
-    def update_configuration(self, config):
+    def update_configuration(self, thetas):
 
         # be careful! angles should be the same length as before
-        self.thetas = []
-        for angle in config:
-            self.thetas.append(math.radians(angle))
+        self.thetas = thetas
+        # for angle in config:
+        #     self.thetas.append(math.radians(angle))
 
         self.x_values = self.build_x_values()
         self.y_values = self.build_y_values()
@@ -75,7 +75,7 @@ class Robot:
         config = []
 
         for i in range(0, self.num_angles):
-            config.append(random.randrange(0, 360))
+            config.append(random.uniform(0, MAX_ANGLE))
         self.update_configuration(config)
         return config
 

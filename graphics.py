@@ -10,12 +10,14 @@ iteration = 0
 
 class Graphics:
 
-    def __init__(self, env, configs):
+    def __init__(self, env):
         self.env = env
-        self.robot = env.test_robot
+        self.robot = env.robot
+        print(self.robot.x_values)
 
-        self.configs = configs
+        self.configs = env.configs
         print('PRINTING CONFIGS')
+        print(len(self.configs))
         for config in self.configs:
             print(config)
 
@@ -66,9 +68,13 @@ class Graphics:
         self.draw_configuration()
         iteration += 1
 
+    def main(self):
+        clear()
+        self.draw_configuration()
 
     def render(self):
         start_graphics(self.animate)
+        # start_graphics(self.main)
 
     # def render(self):
     #     start_graphics(self.main())
