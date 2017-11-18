@@ -27,19 +27,18 @@ Things we want to compute:
 
 """
 
-from numpy import pi, cos, sin, sinc, array, sqrt, arctan, \
-    round
+from numpy import pi, cos, sin, sinc, array, sqrt, round #,arctan
 import sys
 print(sys.version)
 
 
-controls_rs = array([
-            [1, 0, 0],
-            [-1, 0, 0],
-            [1, 0, -1],
-            [1, 0, 1],
-            [-1, 0, -1],
-            [-1, 0, 1]])
+controls_rs = list([
+    [1, 0, 0], # forwards
+    [-1, 0, 0], # backwards
+    [1, 0, -1], # forward and clockwise
+    [1, 0, 1], # forward and counterclockwise
+    [-1, 0, -1], # backwards and clockwise
+    [-1, 0, 1]]) # backward and counterclockwise
 
 
 def config_from_transform(T):
@@ -114,7 +113,8 @@ def single_action(T_prev, u, duration):
     current_T = transform_from_control(u, duration)
     return T_prev @ current_T
 
-def sample_trajectory(sequ, seqt, final_t, n, epsilon=.00001):
+# capable of simulating multiple actions in sequence
+def sample_trajectory(sequ, seqt, final_t, n, T_prev=transform_from_config([0, 0, 0]), epsilon=.00001):
     # Compute a list of n + 1 transforms
 
     # n is number of timesteps. number of samples = n + 1, since first
@@ -128,7 +128,8 @@ def sample_trajectory(sequ, seqt, final_t, n, epsilon=.00001):
     T_list = []
 
     # transform up through the previous complete action
-    T_prev = transform_from_config([0, 0, 0])
+
+
     t_prev_total = 0  # accumulated time for completed controls
 
     while t < final_t + epsilon and current_action < len(seqt):
@@ -156,6 +157,7 @@ def sample_trajectory(sequ, seqt, final_t, n, epsilon=.00001):
     return T_list
 
 
+
 if __name__ == '__main__':
 
     # T = transform_from_control(controls_rs[0], .2)
@@ -163,5 +165,5 @@ if __name__ == '__main__':
     T = transform_from_sequence([controls_rs[0]], [.2])
     print(T)
 
-    T_list = sample_trajectory([controls_rs[0], controls_rs[3]], [.2, .2], .4, 10)
-    print(T_list)
+    # T_list = sample_trajectory([controls_rs[0], controls_rs[3]], [.2, .2], .4, 10)
+    # print(T_list)

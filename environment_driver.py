@@ -6,6 +6,31 @@ from graphics import Graphics
 from cs1lib import *
 # from PRM import PRM
 
+PI = math.pi
+OBSTACLES = [Point(0, 50),
+            #  Point(-50, -50),
+            #  Point(50, -50),
+             Point(0, -50)]
+
+# START = (3.141592653589793, 4.71238898038469, 1.5707963267948966, 4.71238898038469)
+# GOAL = (3.747354136144094, 4.228757160221105, 0.8036688155149865, 4.2044718570895485)
+#
+# START = (3.747354136144094, 4.228757160221105, 0.8036688155149865, 4.2044718570895485)
+# GOAL = (4.493422388567769, 4.787514468632734, 0.6159879353211801, 0.18367571848272032)
+#
+# START = (4.493422388567769, 4.787514468632734, 0.6159879353211801, 0.18367571848272032)
+# GOAL = (0.595476640163818, 0.314145256632127, 5.464764900198554, 1.1030375852494045)
+#
+START = (5.267611642257664, 0.9573728460702193, 4.74136323376864, 3.171974378676522)
+GOAL = (0, 1.5707963267948966, 4.71238898038469, 1.5707963267948966)
+
+# START = (PI, 1.5 * PI, PI/2, 1.5 * PI)
+# GOAL = (0, 0, PI/2, 0)
+
+# OBSTACLES = [Point(50, 50),
+#              Point(-50, -50),
+#              Point(50, -50),
+#              Point(-50, 50)]
 
 # collisions, obstacles
 class Environment:
@@ -16,15 +41,9 @@ class Environment:
 
         self.configs = []
 
-        # self.obstacles = []
-        self.obstacles = [Point(50, 50),
-                          Point(-50, -50),
-                          Point(50, -50),
-                          Point(-50, 50)]
+        self.obstacles = OBSTACLES
 
     def detect_collision(self, robot):
-
-        # collision = False
 
         for obstacle in self.obstacles:
             for link in robot.links:
@@ -36,14 +55,11 @@ class Environment:
     def generate_valid_configuration(self):
         config = self.robot.generate_random_configuration()
         while self.detect_collision(self.robot):
-            self.robot.generate_random_configuration()
+            config = self.robot.generate_random_configuration()
         return config
 
+    # RETURNS TRUE IF THERE IS A COLLISION
     def check_motion(self, start_config, goal_config, timestep):
-
-        # config: list of DEGREES
-        # print("config 1: {}".format(start_config))
-        # print("config 2: {}".format(goal_config))
 
         increment_by = []
         sum_distances = 0
@@ -61,35 +77,16 @@ class Environment:
             increment_by.append(step)
             sum_distances += abs(difference)
 
-        # print(len(start_config))
-        # print(increment_by)
-
-        # incremented_config = []
         prev_config = list(start_config)
-        # self.configs.append(tuple(prev_config))
-        # print("first: {}".format(self.configs))
         for t in range(timestep):
-            # print(prev_config)
-
-            # incremented_config.append(tuple(prev_config))
 
             self.robot.update_configuration(prev_config)
             self.configs.append(tuple(prev_config))
             if self.detect_collision(self.robot):
                 if(tuple(start_config) == (0, math.radians(90))):
-                    print("COLLISION")
-                    print("     start config: {}".format(start_config))
-                    print("     prev config: {}".format(prev_config))
-                    print("     goal config: {}".format(goal_config))
-                    # for config in self.configs:
-                    #     print(config)
-                return (True, -1)
+                    return (True, -1)
 
             self.configs.append(tuple(prev_config))
-            # print("appending: {}".format(prev_config))
-            # print("     configs right now:")
-            # for config in self.configs:
-            #     print("     {}".format(config))
 
             # i represents the angle
             for i in range(len(start_config)):
@@ -109,28 +106,9 @@ class Environment:
 
 
         return (False, sum_distances)
-            # check if range is good
 
-        # # for each angle in the configuration
-        # for i in range(len(start_config)):
-        #
-        #     # if negative, go backwards--CHECK THIS
-        #     difference = goal_config[i] - start_config[i]
-        #     print("difference: {}".format(difference))
-        #
-        #     step = float(difference/100)
-        #     incremented_config = float(start_config[i])
-        #     for timestep in range(100):
-        #         incremented_config += float(step)
-        #         print("new config: {}".format(incremented_config))
-
-            # check if the difference is forward or backward for timestep
 
 def angular_distance(end, start):
-    # print("end is {}".format(end))
-    # print("start is {}".format(start))
-    # print("return is {}".format(float(end) - float(start)))
-    # print("------")
     return float(end) - float(start)
 
 def get_min_travel(end, start):
@@ -147,24 +125,17 @@ def get_min_travel(end, start):
         return(test, False)
 
 if __name__ == "__main__":
-    # angles = [0, 90]
-    # angles = [270, 270]
-    # robot_test = robot(angles, 100)
-    # environment_test = environment(robot_test, 3)
-
-    # starting_angles = [0, math.radians(90)]
-    # end_angles = [math.radians(270), math.radians(270)]
-
-    starting_angles = [0.17453292519943295, 6.19591884457987, 1.5707963267948966, 6.19591884457987]
-    end_angles = [3.774016428646744, 1.0914423299586218, 5.4175286331656896, 0.22380400583459362]
-    # starting_angles = [math.radians(270), math.radians(10), math.radians(270), math.radians(10)]
-    # end_angles = [1.327213366381409, 0.9768762655660873]
-    # starting_angles = [5.847508897435841, 0.6093042316591071]
 
 
-    robot_test = Robot(starting_angles, end_angles, 50)
+    starting_angles = START
+    end_angles = GOAL
+    # starting_angles = [4.71238898038469, 0, 4.71238898038469, 0]
+    # end_angles = [0, 0, 1.5707963267948966, 0]
+    # end_angles = [0.3526924560686145, 3.92399985482058, 1.551518484848645, 0.12791327586074155]
+
+    robot_test = Robot(starting_angles)
     environment_test = Environment(robot_test, 5)
-    environment_test.check_motion(starting_angles, end_angles, 100)
+    print(environment_test.check_motion(starting_angles, end_angles, 100))
     # environment_test.generate_valid_configuration()
-    # graphics = Graphics(environment_test)
-    # graphics.render()
+    graphics = Graphics(environment_test)
+    graphics.render()

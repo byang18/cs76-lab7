@@ -2,9 +2,18 @@ import random
 import math
 from collections import deque
 from operator import itemgetter
-# from SearchNode import SearchNode
+from shapely.geometry import Point, LineString, Polygon
+from graphics import Graphics
 from robot import Robot
-from environment_driver import Environment
+
+PI = math.pi
+START = (PI, 1.5 * PI, PI/2, 1.5 * PI)
+GOAL = (0, PI/2, 1.5 * PI, PI/2)
+BUFFER_RADIUS = 3
+TIMESTEP = 100
+NUM_VERTICES = 100
+OBSTACLES = [Point(0, 50),
+             Point(0, -50)]
 
 class SearchNode:
 
@@ -23,45 +32,39 @@ class SearchNode:
 
 class PRM:
 
-    def __init__(self, e):
-        self.env = e
-        self.starting_config = self.env.robot.thetas
+    def __init__(self, robot):
+        self.robot = robot
         self.path = []
-        self.graph = {}
+        self.road_map = {}
+
+        self.obstacles = OBSTACLES
 
     def bfs_search(self, node=None):
 
         queue = deque()
         visited = {}
         path = []
-        # goal_state = self.e.robot.goal_state
-        # print(tuple(self.env.robot.goal_state))
 
         if node is None:
-            node = SearchNode(tuple(self.starting_config))
+            node = SearchNode(tuple(START))
             queue.appendleft(node)
             while len(queue) > 0:
                 current = queue.pop()
                 current_state = tuple(current.get_state())
-                # print(tuple(current_state))
-                # print("current: " + str(current.state))
+                print(current_state)
                 visited[tuple(current_state)] = current
-                if tuple(current_state) == tuple(self.env.robot.goal_state):
+                if tuple(current_state) == tuple(GOAL):
                     path = self.backtrack(current)
                     break
-                successors = self.graph[tuple(current_state)]
+
+                successors = self.road_map[current_state]
                 for state in successors:
-                    # print("     suc: " + str(state))
                     if tuple(state) not in visited:
                         add_node = SearchNode(tuple(state), current)
                         queue.appendleft(add_node)
 
         print("SOLUTION:")
         return path
-        #     count = search_problem.get_count()
-        #     solution = SearchSolution(search_problem, "BFS", path, count)
-        #
-        # return solution
 
     def backtrack(self, node):
         path = [node.get_state()]
@@ -71,61 +74,134 @@ class PRM:
             next_node = next_node.get_parent()
         return path[::-1]
 
-    def generate_vertices(self):
+    def nearest_neighbors(self, config):
+        distances = []
+        for neighbor in self.road_map:
 
-        self.graph[tuple(self.starting_config)] = []
-        self.graph[tuple(self.env.robot.goal_state)] = []
+            if neighbor == config:
+                continue
 
-        for i in range(0, 100):
-            config = tuple(self.env.generate_valid_configuration())
-            if config not in self.graph:
-                self.graph[config] = []
+            distance = get_sum_angular_distance(config, neighbor)
+            distances.append(tuple((neighbor, distance)))
 
-    def fill_neighbors(self, k=15):
+        l = sorted(distances, key=itemgetter(1))
+        l = l[:15]
+        to_return = []
+        for item in l:
+            to_return.append(item[0])
 
-        m = 0
-        for config in self.graph:
+        # print(" neighbors: {}".format(to_return))
+        return to_return
 
-            no_collisions = []
+    def add_vertex(self, config):
 
-            for end_config in self.graph:
+        if config not in self.road_map:
+            self.road_map[config] = []
 
-                if(config == end_config):
-                    continue
+        neighbors = self.nearest_neighbors(config)
+        for neighbor in neighbors:
+            if self.no_collision(config, neighbor):
+                l = self.road_map[config]
+                l.append(neighbor)
+                self.road_map[config] = l
 
-                # if it's good then add to the list
-                is_collision, diff = self.env.check_motion(config, end_config, 10)
+                l = self.road_map[neighbor]
+                l.append(config)
+                self.road_map[neighbor] = l
 
-                if is_collision:
-                    continue
+    def no_collision(self, start_config, goal_config):
 
-                m += 1
-                if (m % 50 == 0):
-                    print(m)
+        prev_config = list(start_config)
+        sum_distances = 0
+        increment_by = []
 
-                no_collisions.append(tuple((end_config, diff)))
-                # no_collisions.append(end_config)
+        for i in range(len(start_config)):
 
-            no_collisions.sort(key=itemgetter(1), reverse=True)
+            difference = angular_distance(goal_config[i], start_config[i])
 
-            to_add = []
-            for i in range(min(k, len(no_collisions))):
-                to_add.append(no_collisions[i][0])
-            # print(no_collisions)
-            self.graph[config] = to_add
+            if ((start_config[i] + difference) % (2 * PI)) == goal_config[i]:
+                step = difference/TIMESTEP
+                # print(step)
+            else:
+                step = -difference/TIMESTEP
+
+            # sum_distances += abs(difference)
+
+
+            for t in range(TIMESTEP):
+                prev_config[i] = prev_config[i] + step
+                self.robot.update_configuration(prev_config)
+                if self.detect_collision(self.robot):
+                    return False
+
+            prev_config[i] = start_config[i]
+
+        return True
+
+    def detect_collision(self, robot):
+
+        for obstacle in self.obstacles:
+            for link in robot.links:
+                if link.intersection(obstacle.buffer(BUFFER_RADIUS)):
+                    return True
+
+        return False
+
+    def generate_valid_configuration(self):
+        config = self.robot.generate_random_configuration()
+        while self.detect_collision(self.robot):
+            config = self.robot.generate_random_configuration()
+        return config
+
+    def build_roadmap(self, start, end, k):
+
+        i = 0
+        while (i < k):
+            config = self.generate_valid_configuration()
+            self.add_vertex(config)
+            print(i)
+            i += 1
+
+        self.add_vertex(start)
+        self.add_vertex(end)
+
+
+def get_sum_angular_distance(config1, config2):
+    i = 0
+    s = 0
+    for deg in list(config1):
+        distance = angular_distance(deg, config2[i])
+        s += distance
+        i += 1
+    return s
+
+def ad_helper(end, start):
+    return abs(float(end) - float(start))
+
+def angular_distance(end, start):
+
+    # true is forwards
+    # false is backwards
+
+    d = ad_helper(end, start)
+    return min(d, (2 * math.pi) - d)
+
+    # if d == test:
+    #     return(test, True)
+    # else:
+    #     return(test, False)
 
 if __name__ == "__main__":
-    end_angles = [math.radians(10), math.radians(355), math.radians(90), math.radians(355)]
-    # starting_angles = [math.radians(270), math.radians(10), math.radians(270), math.radians(10)]
-    starting_angles = [3.774016428646744, 1.0914423299586218, 5.4175286331656896, 0.22380400583459362]
-    # angles = [315, 270]
-    # angles = [270, 270]
-    robot_test = Robot(starting_angles, end_angles, 50)
-    environment_test = Environment(robot_test, 5)
-    prm = PRM(environment_test)
-    prm.generate_vertices()
-    # print(prm.graph)
-    # print(prm.starting_config)
-    prm.fill_neighbors()
-    print(prm.graph)
+    r = Robot(START)
+    prm = PRM(r)
+
+    prm.build_roadmap(START, GOAL, NUM_VERTICES)
+    print(prm.road_map)
+
+    for j in prm.road_map:
+        print(len(prm.road_map[j]))
+
     print(prm.bfs_search())
+
+    # TESTING
+    # print(angular_distance(0, 3* PI/2))
