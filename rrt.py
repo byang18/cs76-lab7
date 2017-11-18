@@ -1,19 +1,20 @@
 # using shapely for collision detection
 import random
 import math
-import copy
+# import copy
 from operator import itemgetter
 from shapely.geometry import Polygon, Point
 from display_planar import TrajectoryView
 from cs1lib import clear, start_graphics
 from planarsim import *
 
-START = [10, 10, 0]
-GOAL = [300, 300, 0]
+START = (15, 15, math.pi/2)
+GOAL = (170, 35, -math.pi/4)
 WINDOW_WIDTH = 400
 WINDOW_HEIGHT = 400
 
 DEFAULT_TIMESTEP = 30
+DURATION = 0.3
 OBSTACLES = [Polygon(([0, 0], [0, 1], [1, 1], [1, 0]))]
 
 # An edge describes how to get from start to end given a control and duration
@@ -25,8 +26,8 @@ class SearchNode:
         # self.duration = duration
 
     def __str__(self):
-        s = "{} from {} with control {}".format(self.config, self.parent, self.control)
-        return s
+        # s = "{} from {} with control {}".format(self.config, self.parent, self.control)
+        return str(self.config)
 
     def get_config(self):
         return self.config
@@ -64,68 +65,68 @@ class RRT:
 
     # check if there is a collision in the trajectory
     # if there is, return True, if there is not, return False
-    def check_trajectory(self, config, random_control, timestep):
-        t = timestep / 20
+    # def check_trajectory(self, config, random_control, timestep):
+    #     t = timestep / 20
+    #
+    #     step = 0
+    #     prev = config
+    #     while step < 20:
+    #         resulting_configuration = build_new_config(prev, random_control, t)
+    #         check = Point(resulting_configuration[0], resulting_configuration[1]) # check if x or y coord is valid
+    #
+    #         # if there is a collision, trajectory is True
+    #         if self.check_collision(check):
+    #             return False
+    #         prev = resulting_configuration
+    #         step += 1
+    #     return True
 
-        step = 0
-        prev = config
-        while step < 20:
-            resulting_configuration = build_new_config(prev, random_control, t)
-            check = Point(resulting_configuration[0], resulting_configuration[1]) # check if x or y coord is valid
-
-            # if there is a collision, trajectory is True
-            if self.check_collision(check):
-                return False
-            prev = resulting_configuration
-            step += 1
-        return True
-
-    def new_valid_configuration(self):
-        # start = transform_from_config([1, 2, .2])
-        # print("config is: {}".format(config))
-
-        # Build a random config from a resulting config
-        # if tuple(config) not in self.graph:
-        #     self.graph[tuple(config)] = []
-        # print("graph is {}: ".format(self.graph))
-
-        while True:
-            random_control = random.choice(controls_rs)
-            resulting_configuration = build_new_config(config, random_control, timestep)
-
-            # print("resulting_configuration is: {}".format(resulting_configuration))
-
-            # valid trajectory is a bool
-            # if there is a collision, the trajectory is NOT valid (returns false)
-            # otherwise, if there is no collision, the trajectory returns True
-            valid_trajectory = self.check_trajectory(config,
-                                                     random_control,
-                                                     timestep)
-
-            # print(valid_trajectory)
-            if valid_trajectory:
-
-
-                # to_append = copy.deepcopy(self.graph[tuple(config)])
-                edge = Edge(resulting_configuration, config, random_control) # need timestep?
-                self.graph[tuple(resulting_configuration)] = edge
-
-                # print('get here')
-                print('get here')
-                break
-
-            print(valid_trajectory)
+    # def new_valid_configuration(self):
+    #     # start = transform_from_config([1, 2, .2])
+    #     # print("config is: {}".format(config))
+    #
+    #     # Build a random config from a resulting config
+    #     # if tuple(config) not in self.graph:
+    #     #     self.graph[tuple(config)] = []
+    #     # print("graph is {}: ".format(self.graph))
+    #
+    #     while True:
+    #         random_control = random.choice(controls_rs)
+    #         resulting_configuration = build_new_config(config, random_control, timestep)
+    #
+    #         # print("resulting_configuration is: {}".format(resulting_configuration))
+    #
+    #         # valid trajectory is a bool
+    #         # if there is a collision, the trajectory is NOT valid (returns false)
+    #         # otherwise, if there is no collision, the trajectory returns True
+    #         valid_trajectory = self.check_trajectory(config,
+    #                                                  random_control,
+    #                                                  timestep)
+    #
+    #         # print(valid_trajectory)
+    #         if valid_trajectory:
+    #
+    #
+    #             # to_append = copy.deepcopy(self.graph[tuple(config)])
+    #             edge = Edge(resulting_configuration, config, random_control) # need timestep?
+    #             self.graph[tuple(resulting_configuration)] = edge
+    #
+    #             # print('get here')
+    #             print('get here')
+    #             break
+    #
+    #         print(valid_trajectory)
 
     def make_random_configuration(self):
 
         random_x = random.randint(0, WINDOW_WIDTH)
         random_y = random.randint(0, WINDOW_HEIGHT)
-        check = Point(random_x, random_y)
+        check = (random_x, random_y, 0)
 
-        while self.check_collision(check):
+        while self.is_collision(check):
             random_x = random.randint(0, WINDOW_WIDTH)
             random_y = random.randint(0, WINDOW_HEIGHT)
-            check = Point(random_x, random_y)
+            check = (random_x, random_y, 0)
 
         # print('no collision')
 
@@ -168,22 +169,26 @@ class RRT:
 
     def build_tree(self, k):
 
-        while (len(self.tree) < k):
+        i = 0
+        while True:
 
             new_config = self.make_random_configuration()
             neighbor = self.get_nearest_neighbor(new_config)
 
             for control in controls_rs:
                 prev_config = None
+                resulting_transform = sample_trajectory([control], [DURATION], DURATION, DEFAULT_TIMESTEP)
 
-                for i in range(1, DEFAULT_TIMESTEP):
+                for transform in resulting_transform:
 
-                    resulting_transform = single_action(neighbor, control, 1)
-                    resulting_configuration = config_from_transform(resulting_transform)
+                    # resulting_transform = single_action(neighbor.get_config(), control, 0.3)
+                    # resulting_configuration = config_from_transform(resulting_transform)
 
-                    new_x = neighbor.get_config()[0] + resulting_configuration[0]
-                    new_y = neighbor.get_config()[1] - resulting_configuration[1]
-                    new_theta = resulting_configuration[2] + (neighbor.get_config()[2] % math.pi)
+                    x, y, theta = config_from_transform(transform)
+
+                    new_x = neighbor.get_config()[0] + x
+                    new_y = neighbor.get_config()[1] - y
+                    new_theta = theta + (neighbor.get_config()[2] % math.pi)
                     new_config = (new_x, new_y, new_theta)
 
                     if not self.is_collision(new_config):
@@ -192,77 +197,86 @@ class RRT:
                         break
 
                 new_node = SearchNode(prev_config, neighbor, control)
+                self.tree.append(new_node)
 
+                if self.near_goal(prev_config):
+                    path = self.backtrack(new_node)
+                    return path
 
-    def get_nearest_to_goal(self, goal_config):
-
-        min_distance = math.inf
-        min_config = random.choice(list(self.graph.keys()))
-        for a_config in self.graph:
-            start = Point(a_config[0], a_config[1])
-            end = Point(goal_config[0], goal_config[1])
-            distance = get_distance(start, end)
-            if distance < min_distance:
-                print("gggg")
-                min_distance = distance
-                min_config = a_config
-
-        return min_config
-
-    def get_nearest_to_start(self, start_config):
-        min_distance = math.inf
-        min_config = random.choice(list(self.graph.keys()))
-        for a_config in self.graph:
-            start = Point(a_config[0], a_config[1])
-            end = Point(start_config[0], start_config[1])
-            distance = get_distance(start, end)
-            if distance < min_distance:
-                print("gggg")
-                min_distance = distance
-                min_config = a_config
-
-        return min_config
-
-    def find_path(self, goal_config):
-        current = self.get_nearest_to_goal(goal_config)
-        end = self.get_nearest_to_start(self.starting)
-
-        print("START")
-        print("current: {}".format(current))
-        print("new_start_config: {}".format(end))
-        print("num nodes: {}".format(len(self.graph)))
-        # print("keys: {}".format(self.graph.keys()))
-
-        edges = []
-        list_controls = []
-        visited = set()
-
-        i = 0
-        while current != end and i < 15:
-            # if current not in visited:
-            print(current)
-            print(i)
-            edge = self.graph[tuple(current)]
-            edges.append(edge)
-            current = edge.get_parent()
-            print("new_start_config: {}".format(end))
+            print("size is: {}".format(len(self.tree)))
+            print("         neighbor is: {}".format(neighbor))
             i += 1
 
-        print("edges: {}".format(edges))
-        edges.reverse()
-        for edge in edges:
-            list_controls.append(edge.control)
+    def backtrack(self, node):
+        path = [node.get_config()]
+        next_node = node.get_parent()
+        while next_node is not None:
+            path.append(next_node.get_config())
+            next_node = next_node.get_parent()
+        return path[::-1]
 
-        return list_controls
 
-    def get_trajectory(self, controls, starting):
+    def near_goal(self, config):
 
-        timing = []
-        for control in controls:
-            timing.append(1)
+        distance = get_distance(config, self.goal)
+        if distance <= 20:
+            return True
+        return False
 
-        t = sample_trajectory(controls, timing, len(timing), 40, starting)
-        return t
+    # def get_nearest_to_start(self, start_config):
+    #     min_distance = math.inf
+    #     min_config = random.choice(list(self.graph.keys()))
+    #     for a_config in self.graph:
+    #         start = Point(a_config[0], a_config[1])
+    #         end = Point(start_config[0], start_config[1])
+    #         distance = get_distance(start, end)
+    #         if distance < min_distance:
+    #             print("gggg")
+    #             min_distance = distance
+    #             min_config = a_config
+    #
+    #     return min_config
+    #
+    # def find_path(self, goal_config):
+    #     current = self.get_nearest_to_goal(goal_config)
+    #     end = self.get_nearest_to_start(self.starting)
+    #
+    #     print("START")
+    #     print("current: {}".format(current))
+    #     print("new_start_config: {}".format(end))
+    #     print("num nodes: {}".format(len(self.graph)))
+    #     # print("keys: {}".format(self.graph.keys()))
+    #
+    #     edges = []
+    #     list_controls = []
+    #     visited = set()
+    #
+    #     i = 0
+    #     while current != end and i < 15:
+    #         # if current not in visited:
+    #         print(current)
+    #         print(i)
+    #         edge = self.graph[tuple(current)]
+    #         edges.append(edge)
+    #         current = edge.get_parent()
+    #         print("new_start_config: {}".format(end))
+    #         i += 1
+    #
+    #     print("edges: {}".format(edges))
+    #     edges.reverse()
+    #     for edge in edges:
+    #         list_controls.append(edge.control)
+    #
+    #     return list_controls
+
+    # def get_trajectory(self, controls, starting):
+    #
+    #     timing = []
+    #     for control in controls:
+    #         timing.append(1)
+    #
+    #     t = sample_trajectory(controls, timing, len(timing), 40, starting)
+    #     return t
 
 
 def get_distance(config1, config2):
@@ -276,27 +290,28 @@ def build_new_config(old, control, timestep):
     resulting_configuration = config_from_transform(resulting_transform)
     return resulting_configuration
 
-def display():
-    clear()
-    tview.draw()
+# def display():
+#     clear()
+#     tview.draw()
 
 if __name__ == '__main__':
-    starting = [30, 30, 0]
-    rrt = RRT(starting)
+    # starting = [30, 30, 0]
+    rrt = RRT()
     # start_config = [1, 2, .2]
     # print(rrt.new_valid_configuration(start_config, 5))
 
 
-    rrt.build_tree(1000)
-    for c in rrt.graph:
-        print("Config: {}".format(c))
-        print("         " + str(rrt.graph[c]))
-
-    goal = [370, 370, 0]
-    controls = rrt.find_path(goal)
-    print("controls: {}".format(controls))
-    t = rrt.get_trajectory(controls, goal)
+    p = rrt.build_tree(1000)
+    print(p)
+    # for c in rrt.graph:
+    #     print("Config: {}".format(c))
+    #     print("         " + str(rrt.graph[c]))
     #
-    tview = TrajectoryView(t, 400, 400, 40)
-    #
-    start_graphics(display, width=800, height=800)
+    # goal = [370, 370, 0]
+    # controls = rrt.find_path(goal)
+    # print("controls: {}".format(controls))
+    # t = rrt.get_trajectory(controls, goal)
+    # #
+    # tview = TrajectoryView(t, 400, 400, 40)
+    # #
+    # start_graphics(display, width=800, height=800)
