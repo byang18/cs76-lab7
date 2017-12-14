@@ -1,21 +1,29 @@
-# using shapely for collision detection
 import random
 import math
-# import copy
 from operator import itemgetter
 from shapely.geometry import Polygon, Point
 from display_planar import TrajectoryView
-from cs1lib import clear, start_graphics
+from cs1lib import *
 from planarsim import *
 
 START = (25, 25, 0)
-GOAL = (170, 35, 0)
+GOAL = (200, 75, 0)
 WINDOW_WIDTH = 400
 WINDOW_HEIGHT = 400
+GOAL_THRESHOLD = 10
 
 DEFAULT_TIMESTEP = 50
 DURATION = 0.2
-OBSTACLES = [Polygon(([0, 0], [0, 1], [1, 1], [1, 0]))]
+
+# OBSTACLES = []
+# OBSTACLES = [([114, 65], [114, 75], [120, 65], [120, 75])]
+# OBSTACLES = [([114, 65], [114, 75], [120, 65], [120, 75]),
+#              ([100, 50], [100, 55], [115, 50], [115, 55])]
+OBSTACLES = [([114, 65], [114, 75], [120, 65], [120, 75]),
+             ([100, 50], [100, 55], [115, 50], [115, 55]),
+             ([130, 100], [130, 70], [135, 100], [135, 70])]
+
+
 
 # An edge describes how to get from start to end given a control and duration
 class SearchNode:
@@ -23,10 +31,8 @@ class SearchNode:
         self.config = config
         self.parent = parent
         self.control = control
-        # self.duration = duration
 
     def __str__(self):
-        # s = "{} from {} with control {}".format(self.config, self.parent, self.control)
         return str(self.config)
 
     def get_config(self):
@@ -41,19 +47,15 @@ class SearchNode:
 class RRT:
 
     def __init__(self):
-        self.obstacles = OBSTACLES
-
-        self.start = START
         self.start_node = SearchNode(START, None, None)
-
-        self.goal = GOAL
         self.goal_node = SearchNode(GOAL, None, None)
+        self.obstacles = []
+        for obstacle in OBSTACLES:
+            self.obstacles.append(Polygon(obstacle))
 
         self.tree = [self.start_node]
-        self.path = []
+        self.solution = []
 
-    # not sure if checks collisions properly
-    # returns TRUE if there is a collision
     def is_collision(self, config):
 
         point = Point(config[0], config[1])
@@ -74,31 +76,8 @@ class RRT:
             random_y = random.randint(0, WINDOW_HEIGHT)
             check = (random_x, random_y, 0)
 
-        # print('no collision')
-
         random_theta = random.uniform(0, 2 * math.pi)
         return(tuple((random_x, random_y, random_theta)))
-
-    # def get_nearest_neighbors(self, a_config):
-    #     # print(config)
-    #     distances = []
-    #     start = Point(a_config[0], a_config[1])
-    #     for point in self.graph:
-    #         # print("point is {}".format(point))
-    #         if(tuple((point[0], point[1])) == tuple((a_config[0], a_config[1]))):
-    #             continue
-    #         end = Point(point[0], point[1])
-    #         distance = get_distance(start, end)
-    #         distances.append(tuple((point, distance)))
-    #
-    #     l = sorted(distances, key=itemgetter(1), reverse=True)
-    #     l = l[:15]
-    #     to_return = []
-    #     for item in l:
-    #         to_return.append(item[0])
-    #
-    #     # print(" neighbors: {}".format(to_return))
-    #     return to_return
 
     def get_nearest_neighbor(self, config):
 
@@ -113,30 +92,6 @@ class RRT:
 
         return min_node
 
-    # def no_collisions_trajectory(self, control, neighbor):
-    #
-    #     prev_config = None
-    #     resulting_transforms = sample_trajectory([control],
-    #                                              [DURATION],
-    #                                              DURATION,
-    #                                              DEFAULT_TIMESTEP)
-    #
-    #     for transform in resulting_transforms:
-    #
-    #         resulting_configuration = config_from_transform(transform)
-    #
-    #         new_x = neighbor.get_config()[0] + resulting_configuration[0]
-    #         new_y = neighbor.get_config()[1] - resulting_configuration[1]
-    #         new_theta = resulting_configuration[2] + (neighbor.get_config()[2] % math.pi)
-    #         new_config = (new_x, new_y, new_theta)
-    #
-    #         if not self.is_collision(new_config):
-    #             prev_config = new_config
-    #         else:
-    #             return prev_config
-    #
-    #     return prev_config
-
     def no_collisions_trajectory(self, control, neighbor):
 
         prev_config = None
@@ -145,10 +100,10 @@ class RRT:
         for i in range(0, DEFAULT_TIMESTEP):
             resulting_config = build_new_config(current_config, control, DURATION)
 
-            new_x = neighbor.get_config()[0] + resulting_config[0]
-            new_y = neighbor.get_config()[1] - resulting_config[1]
-            new_theta = resulting_config[2] + (neighbor.get_config()[2] % math.pi)
-            new_config = (new_x, new_y, new_theta)
+            x = neighbor.get_config()[0] + resulting_config[0]
+            y = neighbor.get_config()[1] - resulting_config[1]
+            theta = resulting_config[2] + (neighbor.get_config()[2] % math.pi)
+            new_config = (x, y, theta)
 
             if not self.is_collision(new_config):
                 prev_config = new_config
@@ -175,8 +130,8 @@ class RRT:
                     self.tree.append(new_node)
 
                 if self.near_goal(prev_config):
-                    self.path = self.backtrack(new_node)
-                    return self.path
+                    self.solution = self.backtrack(new_node)
+                    return self.solution
 
             print("size is: {}".format(len(self.tree)))
             print("         neighbor is: {}".format(neighbor))
@@ -193,15 +148,40 @@ class RRT:
 
     def near_goal(self, config):
 
-        distance = get_distance(config, self.goal)
-        if distance <= 10:
+        distance = get_distance(config, GOAL)
+        if distance <= GOAL_THRESHOLD:
             return True
         return False
 
+    def display(self):
+        clear()
+
+        for obstacle in OBSTACLES:
+            set_stroke_color(1, 0, 0)
+            set_fill_color(1, 0, 0)
+            draw_polygon(obstacle)
+
+        for i in range(len(self.tree)):
+            if self.tree[i].get_parent() is not None:
+                set_stroke_color(0, 0, 0)
+                draw_line(self.tree[i].get_config()[0],
+                          self.tree[i].get_config()[1],
+                          self.tree[i].get_parent().get_config()[0],
+                          self.tree[i].get_parent().get_config()[1])
+
+        for i in range(len(self.solution) - 1):
+            set_stroke_color(0, 1, 0)
+            draw_line(self.solution[i][0],
+                      self.solution[i][1],
+                      self.solution[i + 1][0],
+                      self.solution[i + 1][1])
+
 def get_distance(config1, config2):
-    point1 = Point(config1[0], config1[1])
-    point2 = Point(config2[0], config2[1])
-    return point1.distance(point2)
+    if (config1 is not None and config2 is not None):
+        point1 = Point(config1[0], config1[1])
+        point2 = Point(config2[0], config2[1])
+        return point1.distance(point2)
+    return math.inf
 
 def build_new_config(old, control, timestep):
     start = transform_from_config(old)
@@ -209,28 +189,8 @@ def build_new_config(old, control, timestep):
     resulting_configuration = config_from_transform(resulting_transform)
     return resulting_configuration
 
-# def display():
-#     clear()
-#     tview.draw()
-
 if __name__ == '__main__':
-    # starting = [30, 30, 0]
     rrt = RRT()
-    # start_config = [1, 2, .2]
-    # print(rrt.new_valid_configuration(start_config, 5))
-
-
-    p = rrt.build_tree(10000)
+    p = rrt.build_tree(100000)
     print(p)
-    # for c in rrt.graph:
-    #     print("Config: {}".format(c))
-    #     print("         " + str(rrt.graph[c]))
-    #
-    # goal = [370, 370, 0]
-    # controls = rrt.find_path(goal)
-    # print("controls: {}".format(controls))
-    # t = rrt.get_trajectory(controls, goal)
-    # #
-    # tview = TrajectoryView(t, 400, 400, 40)
-    # #
-    # start_graphics(display, width=800, height=800)
+    start_graphics(rrt.display)

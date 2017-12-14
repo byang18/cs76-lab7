@@ -1,32 +1,28 @@
-# from robot import robot
-# from environment_driver import environment
-# from PRM import PRM
-import time
+import math
+from robot import Robot
+from prm import PRM
 from cs1lib import *
 
 WINDOW_WIDTH = 200
 WINDOW_HEIGHT = 200
-iteration = 0
+BUFFER_RADIUS = 3
+PI = math.pi
+
+# START = (3.141592653589793, 4.71238898038469, 1.5707963267948966, 4.71238898038469)
+# START = (3.238762669143777, 0.780248312425674, 1.6863333594653087, 4.590840931466817)
+# START = (4.485570585480902, 0.6805452727332207, 4.695385895866597, 0.43120575681221857)
+# START = (1.168125383616999, 0.4721068358472472, 4.5951156505179505, 0.013159449777925387)
+START = (0, 1.5707963267948966, 4.71238898038469, 1.5707963267948966)
 
 class Graphics:
 
-    def __init__(self, env):
-        self.env = env
-        self.robot = env.robot
-        print(self.robot.x_values)
-
-        self.configs = env.configs
-        print('PRINTING CONFIGS')
-        print(len(self.configs))
-        for config in self.configs:
-            print(config)
-
-    def update_robot(self, config):
-        self.robot.update_configuration(config)
+    def __init__(self, prm):
+        self.prm = prm
+        self.robot = prm.robot
 
     def draw_configuration(self):
 
-        if self.env.detect_collision(self.robot):
+        if self.prm.detect_collision(self.robot):
             set_fill_color(1, 0, 0, .5)
             draw_rectangle(0, 0, 400, 400)
 
@@ -49,42 +45,18 @@ class Graphics:
 
         set_stroke_color(0, 0, 0)
 
-        for obstacle in self.env.obstacles:
+        for obstacle in self.prm.obstacles:
 
             draw_circle(WINDOW_WIDTH + obstacle.x,
                         WINDOW_HEIGHT + obstacle.y,
-                        self.env.buffer_radius)
-
-    def animate(self):
-
-        global iteration
-
-        clear()
-        config = self.configs[len(self.configs) - 1]
-        if(iteration < len(self.configs)):
-            config = list(self.configs[iteration])
-            print('rendering: {}'.format(config))
-        self.update_robot(config)
-        self.draw_configuration()
-        iteration += 1
+                        BUFFER_RADIUS)
 
     def main(self):
         clear()
         self.draw_configuration()
 
-    def render(self):
-        start_graphics(self.animate)
-        # start_graphics(self.main)
-
-    # def render(self):
-    #     start_graphics(self.main())
-
-# if __name__ == "__main__":
-#     angles = [0, 90]
-#     # angles = [315, 270]
-#     angles = [270, 270]
-#     robot_test = robot(angles, 100)
-#     environment_test = environment(robot_test, 5)
-#     graphics(environment_test).render()
-#     render_graphics = graphics(environment_test)
-#     start_graphics(render_graphics.main)
+if __name__ == "__main__":
+    r = Robot(START)
+    prm = PRM(r)
+    graphics = Graphics(prm)
+    start_graphics(graphics.main)

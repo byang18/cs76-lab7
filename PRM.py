@@ -3,14 +3,13 @@ import math
 from collections import deque
 from operator import itemgetter
 from shapely.geometry import Point, LineString, Polygon
-from graphics import Graphics
 from robot import Robot
 
 PI = math.pi
 START = (PI, 1.5 * PI, PI/2, 1.5 * PI)
 GOAL = (0, PI/2, 1.5 * PI, PI/2)
 BUFFER_RADIUS = 3
-TIMESTEP = 100
+TIMESTEP = 20
 NUM_VERTICES = 100
 OBSTACLES = [Point(0, 50),
              Point(0, -50)]
@@ -38,6 +37,8 @@ class PRM:
         self.road_map = {}
 
         self.obstacles = OBSTACLES
+
+        self.configs = []
 
     def bfs_search(self, node=None):
 
@@ -90,7 +91,6 @@ class PRM:
         for item in l:
             to_return.append(item[0])
 
-        # print(" neighbors: {}".format(to_return))
         return to_return
 
     def add_vertex(self, config):
@@ -109,11 +109,9 @@ class PRM:
                 l.append(config)
                 self.road_map[neighbor] = l
 
-    def no_collision(self, start_config, goal_config):
+    def no_collision(self, start_config, goal_config, draw=False):
 
         prev_config = list(start_config)
-        sum_distances = 0
-        increment_by = []
 
         for i in range(len(start_config)):
 
@@ -121,14 +119,14 @@ class PRM:
 
             if ((start_config[i] + difference) % (2 * PI)) == goal_config[i]:
                 step = difference/TIMESTEP
-                # print(step)
             else:
                 step = -difference/TIMESTEP
 
-            # sum_distances += abs(difference)
-
-
             for t in range(TIMESTEP):
+                # for drawing purposes
+                if draw:
+                    self.configs.append(tuple(prev_config))
+
                 prev_config[i] = prev_config[i] + step
                 self.robot.update_configuration(prev_config)
                 if self.detect_collision(self.robot):
@@ -165,7 +163,6 @@ class PRM:
         self.add_vertex(start)
         self.add_vertex(end)
 
-
 def get_sum_angular_distance(config1, config2):
     i = 0
     s = 0
@@ -180,16 +177,8 @@ def ad_helper(end, start):
 
 def angular_distance(end, start):
 
-    # true is forwards
-    # false is backwards
-
     d = ad_helper(end, start)
     return min(d, (2 * math.pi) - d)
-
-    # if d == test:
-    #     return(test, True)
-    # else:
-    #     return(test, False)
 
 if __name__ == "__main__":
     r = Robot(START)
@@ -202,6 +191,3 @@ if __name__ == "__main__":
         print(len(prm.road_map[j]))
 
     print(prm.bfs_search())
-
-    # TESTING
-    # print(angular_distance(0, 3* PI/2))

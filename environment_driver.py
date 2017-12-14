@@ -8,31 +8,12 @@ from cs1lib import *
 
 PI = math.pi
 OBSTACLES = [Point(0, 50),
-            #  Point(-50, -50),
-            #  Point(50, -50),
              Point(0, -50)]
 
-# START = (3.141592653589793, 4.71238898038469, 1.5707963267948966, 4.71238898038469)
-# GOAL = (3.747354136144094, 4.228757160221105, 0.8036688155149865, 4.2044718570895485)
-#
-# START = (3.747354136144094, 4.228757160221105, 0.8036688155149865, 4.2044718570895485)
-# GOAL = (4.493422388567769, 4.787514468632734, 0.6159879353211801, 0.18367571848272032)
-#
-# START = (4.493422388567769, 4.787514468632734, 0.6159879353211801, 0.18367571848272032)
-# GOAL = (0.595476640163818, 0.314145256632127, 5.464764900198554, 1.1030375852494045)
-#
 START = (5.267611642257664, 0.9573728460702193, 4.74136323376864, 3.171974378676522)
 GOAL = (0, 1.5707963267948966, 4.71238898038469, 1.5707963267948966)
 
-# START = (PI, 1.5 * PI, PI/2, 1.5 * PI)
-# GOAL = (0, 0, PI/2, 0)
 
-# OBSTACLES = [Point(50, 50),
-#              Point(-50, -50),
-#              Point(50, -50),
-#              Point(-50, 50)]
-
-# collisions, obstacles
 class Environment:
 
     def __init__(self, robot, buffer_radius=5):
@@ -58,7 +39,6 @@ class Environment:
             config = self.robot.generate_random_configuration()
         return config
 
-    # RETURNS TRUE IF THERE IS A COLLISION
     def check_motion(self, start_config, goal_config, timestep):
 
         increment_by = []
@@ -70,7 +50,7 @@ class Environment:
 
             if forward:
                 step = difference/timestep
-                # print(step)
+
             else:
                 step = -difference/timestep
 
@@ -94,12 +74,8 @@ class Environment:
                 dummy += float(increment_by[i])
 
                 if(forward and dummy > 6.27):
-
-                    # dummy should be reset to 0
                     prev_config[i] = (dummy - 6.27)
                 elif((not forward) and dummy < 0):
-
-                    # dummy should be set to 6.27
                     prev_config[i] = (dummy + 6.27)
                 else:
                     prev_config[i] += float(increment_by[i])
@@ -129,13 +105,10 @@ if __name__ == "__main__":
 
     starting_angles = START
     end_angles = GOAL
-    # starting_angles = [4.71238898038469, 0, 4.71238898038469, 0]
-    # end_angles = [0, 0, 1.5707963267948966, 0]
-    # end_angles = [0.3526924560686145, 3.92399985482058, 1.551518484848645, 0.12791327586074155]
 
     robot_test = Robot(starting_angles)
     environment_test = Environment(robot_test, 5)
     print(environment_test.check_motion(starting_angles, end_angles, 100))
-    # environment_test.generate_valid_configuration()
+
     graphics = Graphics(environment_test)
     graphics.render()
